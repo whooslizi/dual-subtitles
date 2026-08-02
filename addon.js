@@ -1073,7 +1073,9 @@ async function generateDynamicSubtitle(
 
     if (!allSubtitles || allSubtitles.length === 0) {
       debugServer.warn('No subtitles found from scrapers');
-      return '1\n00:00:00,000 --> 00:00:01,000\n \n';
+      const mainName = getLanguageName(mainLang) || String(mainLang).toUpperCase();
+      const transName = getLanguageName(transLang) || String(transLang).toUpperCase();
+      return `WEBVTT\n\n1\n00:00:00.100 --> 00:00:10.000\n<b>[Dual Subtitles] 0 subtitles found on OpenSubtitles for ${mainName} + ${transName}</b>\n\n2\n00:00:10.100 --> 00:00:20.000\n<b>[Dual Subtitles] Try selecting another track in Stremio</b>\n`;
     }
 
     const decodedMainId = decodeURIComponent(mainSubId);

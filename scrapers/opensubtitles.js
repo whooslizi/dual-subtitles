@@ -32,44 +32,52 @@ async function fetchOpenSubtitles(mediaId, type, season = null, episode = null, 
     urlsToTry.push(`https://opensubtitles-v3.strem.io/subtitles/anime/${rawId}.json`);
   } else {
     const cleanImdb = rawId.replace(/^tt/, '');
-    let apiUrl = `https://opensubtitles-v3.strem.io/subtitles/${type}/tt${cleanImdb}`;
+    
+    // Episode-specific URL
     if (type === 'series' && season && episode && season !== '0' && episode !== '0') {
-      apiUrl += `:${season}:${episode}`;
+      urlsToTry.push(`https://opensubtitles-v3.strem.io/subtitles/series/tt${cleanImdb}:${season}:${episode}.json`);
     }
-    const normalized = normalizeVideoParams(videoParams);
-    const queryParams = [];
-    if (normalized.filename) queryParams.push(`filename=${encodeURIComponent(normalized.filename)}`);
-    if (normalized.videoSize) queryParams.push(`videoSize=${normalized.videoSize}`);
-    if (normalized.videoHash) queryParams.push(`videoHash=${normalized.videoHash}`);
-    if (queryParams.length > 0) apiUrl += `/${queryParams.join('&')}`;
-    apiUrl += '.json';
-    urlsToTry.push(apiUrl);
+
+    // Series/Movie-level URL
+    const mainType = type === 'series' ? 'series' : 'movie';
+    urlsToTry.push(`https://opensubtitles-v3.strem.io/subtitles/${mainType}/tt${cleanImdb}.json`);
+
+    // Stremio official proxy fallback
+    urlsToTry.push(`https://opensubtitles.strem.io/stremio/v1/subtitles/${mainType}/tt${cleanImdb}.json`);
   }
+
+  const allFound = [];
+  const seenIds = new Set();
 
   for (const apiUrl of urlsToTry) {
     try {
       const response = await axios.get(apiUrl, {
-        timeout: 4000,
+        timeout: 5000,
         headers: { 'User-Agent': 'Stremio Dual Subtitles Addon/1.0.0' }
       });
 
-      if (response.data && Array.isArray(response.data.subtitles) && response.data.subtitles.length > 0) {
-        return response.data.subtitles.map(sub => ({
-          id: `os-${sub.id}`,
-          originalId: sub.id,
-          url: sub.url,
-          lang: sub.lang,
-          source: isKitsu ? 'Anime Kitsu' : 'OpenSubtitles v3',
-          encoding: sub.SubEncoding || 'UTF-8',
-          g: sub.g || null
-        }));
+      if (response.data && Array.isArray(response.data.subtitles)) {
+        for (const sub of response.data.subtitles) {
+          if (sub && sub.id && !seenIds.has(sub.id)) {
+            seenIds.add(sub.id);
+            allFound.push({
+              id: `os-${sub.id}`,
+              originalId: sub.id,
+              url: sub.url,
+              lang: sub.lang,
+              source: isKitsu ? 'Anime Kitsu' : 'OpenSubtitles v3',
+              encoding: sub.SubEncoding || 'UTF-8',
+              g: sub.g || null
+            });
+          }
+        }
       }
     } catch (error) {
-      debugServer.warn(`OpenSubtitles scraper fetch error for ${apiUrl}:`, sanitizeForLogging(error.message));
+      debugServer.warn(`OpenSubtitles scraper fetch notice for ${apiUrl}:`, sanitizeForLogging(error.message));
     }
   }
 
-  return [];
+  return allFound;
 }
 
 module.exports = {

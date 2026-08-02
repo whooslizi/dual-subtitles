@@ -297,12 +297,13 @@ app.get('/subtitles/:filename', (req, res) => {
 
 // Dynamic subtitle generation (serverless-compatible)
 // URL format: /subs/:type/:imdbId/:season/:episode/:mainLang/:transLang/:mainSubId/:transSubId.srt
-app.get('/subs/:type/:imdbId/:season/:episode/:mainLang/:transLang/:mainSubId/:transSubId.srt', async (req, res) => {
+app.get('/subs/:type/:imdbId/:season/:episode/:mainLang/:transLang/:mainSubId/:transSubId.:ext?', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+
   const { type, imdbId, season, episode, mainLang, transLang, mainSubId, transSubId } = req.params;
 
-  // Optional video matching params (forwarded as query-string by the
-  // subtitles handler). These help OpenSubtitles pick the right
-  // release variant for the specific video.
   const videoParams = {
     filename: req.query && req.query.filename ? req.query.filename : undefined,
     videoSize: req.query && req.query.videoSize ? req.query.videoSize : undefined,
@@ -323,14 +324,15 @@ app.get('/subs/:type/:imdbId/:season/:episode/:mainLang/:transLang/:mainSubId/:t
     
     trackSubtitleServed();
 
-    res.setHeader('Content-Type', 'text/srt; charset=utf-8');
-    // s-maxage tells Vercel's edge to cache for 6h; stale-while-revalidate
-    // lets a stale copy serve while we regenerate in the background.
-    // The function only runs again every 6h per (URL, edge node), which
-    // is the single biggest Active CPU saving on this addon.
+    let finalContent = content;
+    if (!finalContent.startsWith('WEBVTT')) {
+      finalContent = 'WEBVTT\n\n' + finalContent.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+    }
+
+    res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=21600, stale-while-revalidate=86400');
-    res.setHeader('Content-Disposition', `inline; filename="dual_${mainLang}_${transLang}.srt"`);
-    res.send(content);
+    res.setHeader('Content-Disposition', `inline; filename="dual_${mainLang}_${transLang}.vtt"`);
+    res.send(finalContent);
   } catch (error) {
     debugServer.error('Dynamic subtitle error:', error.message);
     res.status(500).send('Internal server error');
