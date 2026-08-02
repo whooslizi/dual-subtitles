@@ -187,6 +187,34 @@ const manifest = {
       type: 'checkbox',
       title: 'Auto-translate when secondary language subtitles unavailable',
       default: 'true'
+    },
+    {
+      key: 'marker',
+      type: 'select',
+      title: 'Secondary Subtitle Marker',
+      options: ['None (No prefix symbol)', 'Angle Symbol (›)', 'Dash (-)', 'Dot (•)'],
+      default: 'None (No prefix symbol)'
+    },
+    {
+      key: 'primarySize',
+      type: 'select',
+      title: 'Primary Subtitle Size',
+      options: ['Normal', 'Large', 'Small'],
+      default: 'Normal'
+    },
+    {
+      key: 'secondarySize',
+      type: 'select',
+      title: 'Secondary Subtitle Size',
+      options: ['Small', 'Normal', 'Extra Small'],
+      default: 'Small'
+    },
+    {
+      key: 'color',
+      type: 'select',
+      title: 'Secondary Subtitle Color',
+      options: ['Slate Gray (#94a3b8)', 'Soft Yellow (#fef08a)', 'Cyan (#a5f3fc)', 'White (#ffffff)'],
+      default: 'Slate Gray (#94a3b8)'
     }
   ]
 };
