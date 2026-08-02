@@ -17,15 +17,15 @@ function stripHtmlTags(str) {
  * Simple SRT parser (more reliable than external libraries)
  */
 function parseTimestampLine(line) {
-  if (!line || typeof line !== 'string') return null;
-  if (!line.includes('-->')) return null;
+  if (!line || typeof line !== 'string' || !line.includes('-->')) return null;
 
-  const timePattern = '(\\d{1,2}:\\d{2}:\\d{2}[,.]\\d{1,3})';
-  const match = line.match(new RegExp(`^\\s*${timePattern}\\s*-->\\s*${timePattern}`));
+  const match = line.match(/(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})/);
   if (!match) return null;
 
   const startMs = parseTimeToMs(match[1]);
   const endMs = parseTimeToMs(match[2]);
+
+  if (endMs <= startMs) return null;
 
   return {
     startTime: msToSrtTime(startMs),
