@@ -337,6 +337,24 @@ app.get('/subs/:type/:imdbId/:season/:episode/:mainLang/:transLang/:mainSubId/:t
   }
 });
 
+function parseConfigParam(configStr) {
+  if (!configStr) return {};
+  try {
+    const decoded = decodeURIComponent(configStr);
+    if (decoded.includes('|')) {
+      const parts = decoded.split('|');
+      return { mainLang: parts[0], transLang: parts[1] };
+    }
+    const params = new URLSearchParams(decoded);
+    return {
+      mainLang: params.get('mainLang') || 'English [eng]',
+      transLang: params.get('transLang') || 'Vietnamese [vie]'
+    };
+  } catch (e) {
+    return { mainLang: 'English [eng]', transLang: 'Vietnamese [vie]' };
+  }
+}
+
 // Configuration-specific configure page (redirect to main configure)
 app.get('/:config/configure', (req, res) => {
   res.redirect('/configure');
@@ -345,8 +363,7 @@ app.get('/:config/configure', (req, res) => {
 // Configuration-specific manifest
 app.get('/:config/manifest.json', (req, res) => {
   try {
-    const configParam = decodeURIComponent(req.params.config);
-    const [mainLang, transLang] = configParam.split('|');
+    const { mainLang, transLang } = parseConfigParam(req.params.config);
     
     if (!mainLang || !transLang) {
       return res.status(400).json({ error: 'Invalid configuration' });
@@ -378,8 +395,7 @@ app.get('/:config/manifest.json', (req, res) => {
 // Configuration-specific subtitles handler
 app.get('/:config/subtitles/:type/:id/:extra?.json', async (req, res) => {
   try {
-    const configParam = decodeURIComponent(req.params.config);
-    const [mainLang, transLang] = configParam.split('|');
+    const { mainLang, transLang } = parseConfigParam(req.params.config);
     
     if (!mainLang || !transLang) {
       return res.status(400).json({ subtitles: [] });
