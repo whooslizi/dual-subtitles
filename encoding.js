@@ -89,7 +89,22 @@ const LANGUAGE_ALIASES = {
  * @returns {string[]} Array of equivalent codes
  */
 function getLanguageAliases(languageCode) {
-  return LANGUAGE_ALIASES[languageCode] || [languageCode];
+  if (!languageCode) return [];
+  let code = String(languageCode).toLowerCase().trim();
+  const match = code.match(/\[([a-z]{2,3})\]/);
+  if (match) code = match[1];
+  code = code.split('-')[0].split('_')[0];
+
+  const aliases = new Set([code, String(languageCode)]);
+  const alt = ISO639_3_TO_1[code];
+  if (alt) aliases.add(alt);
+  for (const [k, v] of Object.entries(ISO639_3_TO_1)) {
+    if (v === code || v === alt) aliases.add(k);
+  }
+  if (LANGUAGE_ALIASES[code]) {
+    for (const a of LANGUAGE_ALIASES[code]) aliases.add(a);
+  }
+  return Array.from(aliases);
 }
 
 /**
