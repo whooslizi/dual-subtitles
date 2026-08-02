@@ -182,19 +182,17 @@ app.get('/health', (req, res) => {
 
 // Landing/configuration page
 app.get('/', (req, res) => {
-  res.redirect('/configure');
-});
-
-app.get('/configure', async (req, res) => {
   const baseUrl = getExternalUrl(req);
   const manifestWithLogo = getManifestWithLogo(req);
-  let publicStats;
-  try {
-    publicStats = await getPublicStats();
-  } catch (_) {
-    publicStats = { totalSubtitlesServed: 0, totalInstalls: 0, totalPageViews: 0, uniqueVisitors: 0, topPairs: [], live: false };
-  }
-  const html = generateLandingHTML(manifestWithLogo, baseUrl, publicStats);
+  const html = generateLandingHTML(manifestWithLogo, baseUrl);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+app.get('/configure', (req, res) => {
+  const baseUrl = getExternalUrl(req);
+  const manifestWithLogo = getManifestWithLogo(req);
+  const html = generateLandingHTML(manifestWithLogo, baseUrl);
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(html);
 });

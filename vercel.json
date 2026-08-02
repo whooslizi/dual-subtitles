@@ -5,7 +5,15 @@
       "src": "server.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["public/**", "lib/**", "scrapers/**"]
+        "includeFiles": [
+          "public/**",
+          "lib/**",
+          "scrapers/**",
+          "encoding.js",
+          "languages.js",
+          "landingTemplate.js",
+          "addon.js"
+        ]
       }
     }
   ],
