@@ -6,10 +6,13 @@
 
 const path = require('path');
 const { addonBuilder } = require('stremio-addon-sdk');
-const axios = require('axios');
 const pako = require('pako');
-const sanitize = require('sanitize-html');
 const { debugServer, sanitizeForLogging } = require('./lib/debug');
+
+function stripHtmlTags(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str.replace(/<[^>]*>/g, '');
+}
 /**
  * Simple SRT parser (more reliable than external libraries)
  */
@@ -554,7 +557,7 @@ function mergeSubtitles(mainSubs, transSubs, options = {}) {
     const mainSub = mainTimed[mi];
 
     const cleanMainText = joinSubtitleLines(
-      sanitize(mainSub.text, { allowedTags: [], allowedAttributes: {} }),
+      stripHtmlTags(mainSub.text),
       mainLang
     );
     if (!cleanMainText) continue;
@@ -567,7 +570,7 @@ function mergeSubtitles(mainSubs, transSubs, options = {}) {
         const t = transTimed[ti];
         if (!t) continue;
         const piece = joinSubtitleLines(
-          sanitize(t.text, { allowedTags: [], allowedAttributes: {} }),
+          stripHtmlTags(t.text),
           transLang
         );
         if (piece) transParts.push(piece);
