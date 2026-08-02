@@ -30,8 +30,12 @@ function generateSelectableDualPairs(allSubtitles, mainLang, transLang) {
     return [];
   }
 
+  const mainCode = (getLanguageAliases(mainLang)[0] || 'eng').toUpperCase();
+  const transCode = (getLanguageAliases(transLang)[0] || 'vie').toUpperCase();
+
   const pairs = [];
   const seenKeys = new Set();
+  let matchNum = 1;
 
   for (const m of mainList) {
     for (const t of transList) {
@@ -43,9 +47,10 @@ function generateSelectableDualPairs(allSubtitles, mainLang, transLang) {
             id: `dual-${m.id}-${t.id}`,
             main: m,
             trans: t,
-            title: `Dual [${m.source}] (${mainLang.toUpperCase()}+${transLang.toUpperCase()})`,
-            subtitleName: `Dual [${m.source}] - ${mainLang.toUpperCase()} + ${transLang.toUpperCase()}`
+            title: `Dual [${m.source}] #${matchNum} (${mainCode}+${transCode})`,
+            subtitleName: `Dual [${m.source}] #${matchNum} - ${mainCode} + ${transCode}`
           });
+          matchNum++;
         }
       }
     }
@@ -60,8 +65,8 @@ function generateSelectableDualPairs(allSubtitles, mainLang, transLang) {
           id: `dual-${m.id}-${t.id}`,
           main: m,
           trans: t,
-          title: `Dual [${m.source} + ${t.source}] (${mainLang.toUpperCase()}+${transLang.toUpperCase()})`,
-          subtitleName: `Dual [${m.source} + ${t.source}] - ${mainLang.toUpperCase()} + ${transLang.toUpperCase()}`
+          title: `Dual [${m.source}+${t.source}] (${mainCode}+${transCode})`,
+          subtitleName: `Dual [${m.source}+${t.source}] - ${mainCode} + ${transCode}`
         });
       }
     }
