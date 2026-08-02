@@ -969,6 +969,23 @@ async function subtitlesHandler({ type, id, extra, config }) {
     let finalSubtitles = [];
 
     if (selectablePairs.length > 0) {
+      // Pre-cache top pairs in background so /subs requests hit cache instantly (< 5ms)
+      for (const pair of selectablePairs.slice(0, 3)) {
+        const cacheKey = `${targetId}_${season || '0'}_${episode || '0'}_${mainLang}_${transLang}_${encodeURIComponent(pair.main.id)}_${encodeURIComponent(pair.trans.id)}_`;
+        Promise.all([
+          fetchSubtitleContent(pair.main.url, mainLang).then(c => c ? parseSrt(c) : null),
+          fetchSubtitleContent(pair.trans.url, transLang).then(c => c ? parseSrt(c) : null)
+        ]).then(([mP, tP]) => {
+          if (mP && mP.length > 0 && tP && tP.length > 0) {
+            const merged = mergeSubtitles(mP, tP, { mainLang, transLang });
+            if (merged && merged.length > 0) {
+              const vtt = formatSrtSimple(merged, mainLang, transLang);
+              storeSubtitle(cacheKey, vtt);
+            }
+          }
+        }).catch(() => {});
+      }
+
       finalSubtitles = selectablePairs.map(pair => {
         const dynamicParams = [
           effectiveType,
@@ -983,14 +1000,14 @@ async function subtitlesHandler({ type, id, extra, config }) {
 
         return {
           id: pair.id,
-          url: `{{ADDON_URL}}/subs/${dynamicParams}.srt${videoQuery ? `?${videoQuery}` : ''}`,
-          lang: mainLang,
+          url: `{{ADDON_URL}}/subs/${dynamicParams}.vtt${videoQuery ? `?${videoQuery}` : ''}`,
+          lang: parseLangCode(mainLang),
           name: pair.title,
           SubtitlesName: pair.subtitleName
         };
       });
     } else {
-      const trackTitle = `Dual (${mainLang.toUpperCase()}+${transLang.toUpperCase()})`;
+      const trackTitle = `Dual (${parseLangCode(mainLang).toUpperCase()}+${parseLangCode(transLang).toUpperCase()})`;
       const trackSubtitleName = `${trackTitle} - ${getLanguageName(mainLang)} + ${getLanguageName(transLang)}`;
       const dynamicParams = [
         effectiveType,
@@ -1004,9 +1021,9 @@ async function subtitlesHandler({ type, id, extra, config }) {
       ].join('/');
 
       finalSubtitles = [{
-        id: `dual-${mainLang}-${transLang}`,
-        url: `{{ADDON_URL}}/subs/${dynamicParams}.srt${videoQuery ? `?${videoQuery}` : ''}`,
-        lang: mainLang,
+        id: `dual-${parseLangCode(mainLang)}-${parseLangCode(transLang)}`,
+        url: `{{ADDON_URL}}/subs/${dynamicParams}.vtt${videoQuery ? `?${videoQuery}` : ''}`,
+        lang: parseLangCode(mainLang),
         name: trackTitle,
         SubtitlesName: trackSubtitleName
       }];
