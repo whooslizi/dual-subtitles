@@ -960,7 +960,7 @@ async function subtitlesHandler({ type, id, extra, config }) {
       finalSubtitles = selectablePairs.map(pair => {
         const dynamicParams = [
           effectiveType,
-          imdbId,
+          encodeURIComponent(targetId),
           season || '0',
           episode || '0',
           mainLang,
@@ -982,7 +982,7 @@ async function subtitlesHandler({ type, id, extra, config }) {
       const trackSubtitleName = `${trackTitle} - ${getLanguageName(mainLang)} + ${getLanguageName(transLang)}`;
       const dynamicParams = [
         effectiveType,
-        imdbId,
+        encodeURIComponent(targetId),
         season || '0',
         episode || '0',
         mainLang,
