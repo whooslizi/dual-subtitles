@@ -312,7 +312,9 @@
   </div>
 
   <script>
-    const baseUrl = "http://localhost:7000";
+    const baseUrl = (window.location.origin && !window.location.origin.includes('file://'))
+      ? window.location.origin
+      : "https://dual-subtitles-tau.vercel.app";
     const mainSelect = document.getElementById('mainLang');
     const transSelect = document.getElementById('transLang');
     const installBtn = document.getElementById('installBtn');

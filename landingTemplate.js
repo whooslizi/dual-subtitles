@@ -168,7 +168,9 @@ function generateLandingHTML(manifest, baseUrl) {
   </div>
 
   <script>
-    const baseUrl = "${baseUrl}";
+    const baseUrl = (window.location.origin && !window.location.origin.includes('file://'))
+      ? window.location.origin
+      : "${baseUrl}";
     const mainSelect = document.getElementById('mainLang');
     const transSelect = document.getElementById('transLang');
     const installBtn = document.getElementById('installBtn');
