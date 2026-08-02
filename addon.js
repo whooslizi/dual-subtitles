@@ -936,18 +936,10 @@ async function subtitlesHandler({ type, id, extra, config }) {
 
   // Resolve media ID
   const resolved = await resolveMediaId(id, type, extra);
-  if (!resolved || (!resolved.imdbId && !resolved.kitsuId)) {
-    debugServer.warn('Could not resolve media ID for:', id);
-    return { subtitles: [] };
-  }
-
-  const { imdbId, type: resolvedType, season, episode } = resolved;
-  const effectiveType = resolvedType || type || 'series';
-
-  if (!imdbId) {
-    debugServer.warn('No valid IMDB ID for media:', id);
-    return { subtitles: [] };
-  }
+  const effectiveType = resolved?.type || type || 'series';
+  const season = resolved?.season || extra?.season || '1';
+  const episode = resolved?.episode || extra?.episode || '1';
+  const targetId = resolved?.imdbId ? `tt${resolved.imdbId}` : (resolved?.kitsuId ? `kitsu:${resolved.kitsuId}:${episode}` : id);
 
   try {
     const videoParams = {
@@ -957,8 +949,8 @@ async function subtitlesHandler({ type, id, extra, config }) {
     };
     const videoQuery = serializeVideoParams(videoParams);
 
-    debugServer.log(`Scraping multi-source subtitles for tt${imdbId} (${effectiveType} S:${season} E:${episode})...`);
-    const allSubtitles = await scrapeAllSources(imdbId, effectiveType, season, episode, videoParams);
+    debugServer.log(`Scraping multi-source subtitles for ${targetId} (${effectiveType} S:${season} E:${episode})...`);
+    const allSubtitles = await scrapeAllSources(targetId, effectiveType, season, episode, videoParams);
 
     const selectablePairs = generateSelectableDualPairs(allSubtitles, mainLang, transLang);
 
@@ -1041,14 +1033,14 @@ async function generateDynamicSubtitle(
   debugServer.log('Dynamic subtitle generation:', { type, imdbId, mainLang, transLang });
 
   const resolved = await resolveMediaId(imdbId, type, { season, episode });
-  const cleanImdb = resolved?.imdbId || String(imdbId).replace(/^(tt|kitsu:|mal:|anilist:)/, '');
+  const targetId = resolved?.imdbId ? `tt${resolved.imdbId}` : (resolved?.kitsuId ? `kitsu:${resolved.kitsuId}:${resolved.episode || '1'}` : String(imdbId));
   const effectiveType = resolved?.type || type || 'series';
   const effectiveSeason = resolved?.season || season;
   const effectiveEpisode = resolved?.episode || episode;
 
   const videoCacheFragment = serializeVideoParams(videoParams);
   const cacheKey =
-    `${cleanImdb}_${effectiveSeason || ''}_${effectiveEpisode || ''}` +
+    `${targetId}_${effectiveSeason || ''}_${effectiveEpisode || ''}` +
     `_${mainLang}_${transLang}_${mainSubId}_${transSubId}` +
     `_${videoCacheFragment || ''}`;
   const cached = getSubtitle(cacheKey);
@@ -1060,7 +1052,7 @@ async function generateDynamicSubtitle(
   try {
     const normalizedVideoParams = normalizeVideoParams(videoParams);
     const allSubtitles = await scrapeAllSources(
-      cleanImdb, 
+      targetId, 
       effectiveType, 
       effectiveSeason !== '0' ? effectiveSeason : null, 
       effectiveEpisode !== '0' ? effectiveEpisode : null,
