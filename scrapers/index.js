@@ -7,7 +7,7 @@ const { debugServer } = require('../lib/debug');
 function filterByLang(subtitles, langId) {
   if (!Array.isArray(subtitles) || !langId) return [];
   const aliases = getLanguageAliases(langId);
-  return subtitles.filter(s => s && s.url && aliases.includes(s.lang));
+  return subtitles.filter(s => s?.url && aliases.includes(s.lang));
 }
 
 async function scrapeAllSources(imdbId, type, season = null, episode = null, videoParams = {}) {
@@ -26,9 +26,7 @@ function generateSelectableDualPairs(allSubtitles, mainLang, transLang) {
   const mainList = filterByLang(allSubtitles, mainLang);
   const transList = filterByLang(allSubtitles, transLang);
 
-  if (mainList.length === 0 && transList.length === 0) {
-    return [];
-  }
+  if (!mainList.length && !transList.length) return [];
 
   const mainCode = (getLanguageAliases(mainLang)[0] || 'eng').toUpperCase();
   const transCode = (getLanguageAliases(transLang)[0] || 'vie').toUpperCase();

@@ -8,15 +8,15 @@ async function fetchVietsub(imdbId, type, season = null, episode = null) {
   const results = [];
 
   try {
-    const subdlUrl = `https://api.subdl.com/api/v1/subtitles?imdb_id=tt${cleanImdb}&languages=vie,vi`;
-    const response = await axios.get(subdlUrl, {
+    const url = `https://api.subdl.com/api/v1/subtitles?imdb_id=tt${cleanImdb}&languages=vie,vi`;
+    const { data } = await axios.get(url, {
       timeout: 4000,
       headers: { 'User-Agent': 'Stremio Dual Subtitles Addon/1.0.0' }
     });
 
-    if (response.data && Array.isArray(response.data.subtitles)) {
-      for (const sub of response.data.subtitles) {
-        if (sub && sub.url) {
+    if (Array.isArray(data?.subtitles)) {
+      for (const sub of data.subtitles) {
+        if (sub?.url) {
           results.push({
             id: `vietsub-subdl-${sub.id || Math.random().toString(36).substring(2, 9)}`,
             originalId: sub.id,
@@ -35,18 +35,16 @@ async function fetchVietsub(imdbId, type, season = null, episode = null) {
 
   try {
     let proxyUrl = `https://opensubtitles-v3.strem.io/subtitles/${type}/tt${cleanImdb}`;
-    if (type === 'series' && season && episode) {
-      proxyUrl += `:${season}:${episode}`;
-    }
+    if (type === 'series' && season && episode) proxyUrl += `:${season}:${episode}`;
     proxyUrl += '.json';
 
-    const response = await axios.get(proxyUrl, {
+    const { data } = await axios.get(proxyUrl, {
       timeout: 4000,
       headers: { 'User-Agent': 'Stremio Dual Subtitles Addon/1.0.0' }
     });
 
-    if (response.data && Array.isArray(response.data.subtitles)) {
-      const vieSubs = response.data.subtitles.filter(s => s.lang === 'vie' || s.lang === 'vie-VN' || s.lang === 'vietnamese');
+    if (Array.isArray(data?.subtitles)) {
+      const vieSubs = data.subtitles.filter(s => s.lang === 'vie' || s.lang === 'vie-VN' || s.lang === 'vietnamese');
       for (const s of vieSubs) {
         results.push({
           id: `vietsub-stremio-${s.id}`,
@@ -66,6 +64,4 @@ async function fetchVietsub(imdbId, type, season = null, episode = null) {
   return results;
 }
 
-module.exports = {
-  fetchVietsub
-};
+module.exports = { fetchVietsub };
