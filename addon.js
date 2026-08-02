@@ -103,12 +103,24 @@ function parseSrtSimple(srtText) {
 /**
  * Simple SRT formatter
  */
-function formatSrtSimple(subtitles) {
+function formatSrtSimple(subtitles, mainLang = '', transLang = '') {
   const lines = [];
   
-  for (let i = 0; i < subtitles.length; i++) {
+  let idx = 1;
+  const mainName = getLanguageName(mainLang) || (mainLang ? String(mainLang).toUpperCase() : '');
+  const transName = getLanguageName(transLang) || (transLang ? String(transLang).toUpperCase() : '');
+
+  if (mainName && transName) {
+    lines.push(String(idx++));
+    lines.push('00:00:00,100 --> 00:00:04,500');
+    lines.push(`<b>[Dual Subtitles] Active: ${mainName} + ${transName}</b>`);
+    lines.push('');
+  }
+
+  for (let i = 0; i < (subtitles || []).length; i++) {
     const sub = subtitles[i];
-    lines.push(String(i + 1));
+    if (!sub || !sub.startTime || !sub.endTime || !sub.text) continue;
+    lines.push(String(idx++));
     lines.push(`${sub.startTime} --> ${sub.endTime}`);
     lines.push(sub.text);
     lines.push('');
@@ -306,8 +318,8 @@ async function fetchSubtitleContent(url, languageCode = null) {
   try {
     const response = await fetchWithRetry(url, {
       responseType: 'arraybuffer',
-      timeout: 4000,
-      maxContentLength: 5 * 1024 * 1024 // 5MB limit
+      timeout: 10000,
+      maxContentLength: 10 * 1024 * 1024 // 10MB limit
     });
 
     // Skip forced subtitles — they only contain signs/songs, not full dialogue
