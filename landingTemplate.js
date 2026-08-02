@@ -35,23 +35,13 @@ function generateLandingHTML(manifest, baseUrl) {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 2.5rem;
+      gap: 2rem;
     }
     header {
       text-align: center;
       position: relative;
       width: 100%;
     }
-    .gear-icon {
-      position: absolute;
-      right: 0;
-      top: 0;
-      color: #71717a;
-      cursor: pointer;
-      font-size: 1.25rem;
-      transition: color 0.2s;
-    }
-    .gear-icon:hover { color: #f4f4f5; }
     h1 {
       font-size: 2.5rem;
       font-weight: 800;
@@ -87,13 +77,15 @@ function generateLandingHTML(manifest, baseUrl) {
     .card-body {
       padding: 1.25rem;
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 1rem;
-      align-items: flex-end;
     }
     .field {
-      flex: 1;
-      min-width: 200px;
       display: flex;
       flex-direction: column;
       gap: 0.4rem;
@@ -117,17 +109,23 @@ function generateLandingHTML(manifest, baseUrl) {
       transition: border-color 0.2s;
     }
     select:focus { border-color: #3b82f6; }
+    .actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
     .btn {
+      flex: 1;
       background: #2563eb;
       color: #ffffff;
       font-size: 0.9rem;
       font-weight: 600;
-      padding: 0.65rem 1.5rem;
+      padding: 0.75rem 1.5rem;
       border-radius: 8px;
       text-decoration: none;
       border: none;
       cursor: pointer;
-      white-space: nowrap;
+      text-align: center;
       transition: background 0.2s;
     }
     .btn:hover { background: #1d4ed8; }
@@ -137,32 +135,74 @@ function generateLandingHTML(manifest, baseUrl) {
     }
     .btn-copy:hover { background: #3f3f46; }
     @media (max-width: 640px) {
-      .card-body { flex-direction: column; align-items: stretch; }
-      .btn { width: 100%; text-align: center; }
+      .actions { flex-direction: column; }
     }
   </style>
 </head>
 <body>
   <div class="wrapper">
     <header>
-      <span class="gear-icon">⚙</span>
       <h1>Dual<span>Subtitles</span></h1>
       <div class="tagline">SCRAPE AND STREAM DUAL SUBTITLES SEAMLESSLY.</div>
     </header>
 
     <div class="card">
-      <div class="card-header">CONFIGURATION</div>
+      <div class="card-header">SUBTITLE LANGUAGES</div>
       <div class="card-body">
-        <div class="field">
-          <label for="mainLang">PRIMARY LANGUAGE</label>
-          <select id="mainLang">${optionsHTML}</select>
+        <div class="grid">
+          <div class="field">
+            <label for="mainLang">PRIMARY LANGUAGE (Top)</label>
+            <select id="mainLang">${optionsHTML}</select>
+          </div>
+          <div class="field">
+            <label for="transLang">SECONDARY LANGUAGE (Bottom)</label>
+            <select id="transLang">${optionsHTML}</select>
+          </div>
         </div>
-        <div class="field">
-          <label for="transLang">SECONDARY LANGUAGE</label>
-          <select id="transLang">${optionsHTML}</select>
+
+        <div class="card-header" style="margin: 0.5rem -1.25rem 0; border-top: 1px solid #27272a;">STYLE & DISPLAY CUSTOMIZATION</div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="marker">SECONDARY MARKER PREFIX</label>
+            <select id="marker">
+              <option value="none" selected>None (No prefix symbol)</option>
+              <option value="angle">Angle Symbol (›)</option>
+              <option value="dash">Dash (-)</option>
+              <option value="dot">Dot (•)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="primarySize">PRIMARY SUBTITLE SIZE</label>
+            <select id="primarySize">
+              <option value="normal" selected>Normal</option>
+              <option value="large">Large</option>
+              <option value="small">Small</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="secondarySize">SECONDARY SUBTITLE SIZE</label>
+            <select id="secondarySize">
+              <option value="small" selected>Small (Recommended)</option>
+              <option value="normal">Normal</option>
+              <option value="x-small">Extra Small</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="color">SECONDARY SUBTITLE COLOR</label>
+            <select id="color">
+              <option value="#94a3b8" selected>Slate Gray (#94a3b8)</option>
+              <option value="#fef08a">Soft Yellow (#fef08a)</option>
+              <option value="#a5f3fc">Cyan (#a5f3fc)</option>
+              <option value="#ffffff">White (#ffffff)</option>
+            </select>
+          </div>
         </div>
-        <a id="installBtn" href="#" class="btn">Install</a>
-        <button id="copyBtn" class="btn btn-copy">Copy Link</button>
+
+        <div class="actions">
+          <a id="installBtn" href="#" class="btn">Install Addon</a>
+          <button id="copyBtn" class="btn btn-copy">Copy Manifest Link</button>
+        </div>
       </div>
     </div>
   </div>
@@ -173,6 +213,10 @@ function generateLandingHTML(manifest, baseUrl) {
       : "${baseUrl}";
     const mainSelect = document.getElementById('mainLang');
     const transSelect = document.getElementById('transLang');
+    const markerSelect = document.getElementById('marker');
+    const primarySizeSelect = document.getElementById('primarySize');
+    const secondarySizeSelect = document.getElementById('secondarySize');
+    const colorSelect = document.getElementById('color');
     const installBtn = document.getElementById('installBtn');
     const copyBtn = document.getElementById('copyBtn');
 
@@ -182,19 +226,24 @@ function generateLandingHTML(manifest, baseUrl) {
     function update() {
       const main = encodeURIComponent(mainSelect.value);
       const trans = encodeURIComponent(transSelect.value);
-      const http = baseUrl + '/mainLang=' + main + '&transLang=' + trans + '/manifest.json';
+      const marker = encodeURIComponent(markerSelect.value);
+      const primarySize = encodeURIComponent(primarySizeSelect.value);
+      const secondarySize = encodeURIComponent(secondarySizeSelect.value);
+      const color = encodeURIComponent(colorSelect.value);
+
+      const query = 'mainLang=' + main + '&transLang=' + trans + '&marker=' + marker + '&primarySize=' + primarySize + '&secondarySize=' + secondarySize + '&color=' + color;
+      const http = baseUrl + '/' + query + '/manifest.json';
       installBtn.href = http.replace(/^https?:\\/\\//, 'stremio://');
       copyBtn.dataset.url = http;
     }
 
-    mainSelect.addEventListener('change', update);
-    transSelect.addEventListener('change', update);
+    [mainSelect, transSelect, markerSelect, primarySizeSelect, secondarySizeSelect, colorSelect].forEach(el => el.addEventListener('change', update));
     update();
 
     copyBtn.addEventListener('click', () => {
       navigator.clipboard.writeText(copyBtn.dataset.url).then(() => {
         copyBtn.innerText = 'Copied!';
-        setTimeout(() => copyBtn.innerText = 'Copy Link', 2000);
+        setTimeout(() => copyBtn.innerText = 'Copy Manifest Link', 2000);
       });
     });
   </script>

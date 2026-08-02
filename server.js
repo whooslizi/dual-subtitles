@@ -181,7 +181,11 @@ app.get('/subs/:type/:imdbId/:season/:episode/:mainLang/:transLang/:mainSubId/:t
   const videoParams = {
     filename: req.query?.filename,
     videoSize: req.query?.videoSize,
-    videoHash: req.query?.videoHash
+    videoHash: req.query?.videoHash,
+    marker: req.query?.marker,
+    primarySize: req.query?.primarySize,
+    secondarySize: req.query?.secondarySize,
+    color: req.query?.color
   };
 
   try {
@@ -210,15 +214,33 @@ function parseConfigParam(configStr) {
     const decoded = decodeURIComponent(configStr);
     if (decoded.includes('|')) {
       const parts = decoded.split('|');
-      return { mainLang: parts[0], transLang: parts[1] };
+      return {
+        mainLang: parts[0],
+        transLang: parts[1],
+        marker: parts[2] || 'none',
+        primarySize: parts[3] || 'normal',
+        secondarySize: parts[4] || 'small',
+        color: parts[5] || '#94a3b8'
+      };
     }
     const params = new URLSearchParams(decoded);
     return {
       mainLang: params.get('mainLang') || 'English [eng]',
-      transLang: params.get('transLang') || 'Vietnamese [vie]'
+      transLang: params.get('transLang') || 'Vietnamese [vie]',
+      marker: params.get('marker') || 'none',
+      primarySize: params.get('primarySize') || 'normal',
+      secondarySize: params.get('secondarySize') || 'small',
+      color: params.get('color') || '#94a3b8'
     };
   } catch (_) {
-    return { mainLang: 'English [eng]', transLang: 'Vietnamese [vie]' };
+    return {
+      mainLang: 'English [eng]',
+      transLang: 'Vietnamese [vie]',
+      marker: 'none',
+      primarySize: 'normal',
+      secondarySize: 'small',
+      color: '#94a3b8'
+    };
   }
 }
 

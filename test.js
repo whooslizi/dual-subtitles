@@ -328,6 +328,17 @@ test('Dual merge distinguishes lines: bold primary, marker, colored secondary [I
   );
 });
 
+test('Decodes HTML entities like &quot; so raw quotes render clean', () => {
+  const main = [{ id: '1', startTime: '00:00:01,000', endTime: '00:00:04,000', text: '&quot;Miyamizu shrine&quot;' }];
+  const trans = [{ id: '1', startTime: '00:00:01,000', endTime: '00:00:04,000', text: '&amp;quot;Đền thờ Miyamizu&amp;quot;' }];
+  const result = mergeSubtitles(main, trans, { mainLang: 'eng', transLang: 'vie', marker: 'none' });
+  assert.strictEqual(result.length, 1);
+  assert.ok(result[0].text.includes('"Miyamizu shrine"'), 'quotes should be unescaped');
+  assert.ok(result[0].text.includes('"Đền thờ Miyamizu"'), 'double escaped quotes should be unescaped');
+  assert.ok(!result[0].text.includes('&quot;'), 'raw &quot; must not appear');
+  assert.ok(!result[0].text.includes('\u203a'), 'marker none removes angle bracket');
+});
+
 // ============================================================================
 // encoding.js — isCjkLanguage [Issue #1]
 // ============================================================================

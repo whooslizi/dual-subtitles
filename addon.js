@@ -121,7 +121,7 @@ function formatSrtSimple(subtitles, mainLang = '', transLang = '') {
   return lines.join('\n');
 }
 
-const VIDEO_PARAM_KEYS = ['filename', 'videoSize', 'videoHash'];
+const VIDEO_PARAM_KEYS = ['filename', 'videoSize', 'videoHash', 'marker', 'primarySize', 'secondarySize', 'color'];
 
 function normalizeVideoParams(params = {}) {
   if (!params || typeof params !== 'object') return {};
@@ -303,18 +303,36 @@ function parseSrt(srtText) {
   }
 }
 
+function decodeHtmlEntities(str) {
+  if (!str || typeof str !== 'string') return '';
+  let prev = '';
+  let curr = String(str);
+  let passes = 0;
+  while (curr !== prev && passes < 3) {
+    prev = curr;
+    curr = curr
+      .replace(/&quot;|&#34;|&#034;/gi, '"')
+      .replace(/&apos;|&#39;|&#039;/gi, "'")
+      .replace(/&lt;|&#60;/gi, '<')
+      .replace(/&gt;|&#62;/gi, '>')
+      .replace(/&nbsp;|&#160;/gi, ' ')
+      .replace(/&amp;|&#38;/gi, '&');
+    passes++;
+  }
+  return curr;
+}
+
 function joinSubtitleLines(text, langCode) {
   if (!text) return '';
   return text.replace(/\r?\n|\r/g, isCjkLanguage(langCode) ? '' : ' ').trim();
 }
 
-function htmlEncodeSrt(text) {
+function cleanText(text, langCode) {
   if (!text) return '';
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  let s = decodeHtmlEntities(text);
+  s = stripHtmlTags(s);
+  s = decodeHtmlEntities(s);
+  return joinSubtitleLines(s, langCode);
 }
 
 const DUAL_SUB_TRANS_COLOR = '#94a3b8';
@@ -327,7 +345,11 @@ function mergeSubtitles(mainSubs, transSubs, options = {}) {
     matchThresholdMs = 1500,
     allowMultiTrans = true,
     enableOffset = true,
-    enableDrift = true
+    enableDrift = true,
+    marker = 'angle',
+    primarySize = 'normal',
+    secondarySize = 'small',
+    color = DUAL_SUB_TRANS_COLOR
   } = opts;
 
   const mainTimed = [];
@@ -360,24 +382,33 @@ function mergeSubtitles(mainSubs, transSubs, options = {}) {
 
   for (let mi = 0; mi < mainTimed.length; mi++) {
     const mainSub = mainTimed[mi];
-    const cleanMainText = joinSubtitleLines(stripHtmlTags(mainSub.text), mainLang);
+    const cleanMainText = cleanText(mainSub.text, mainLang);
     if (!cleanMainText) continue;
+
+    let formattedMain = `<b>${cleanMainText}</b>`;
+    if (primarySize === 'large') formattedMain = `<big>${formattedMain}</big>`;
+    else if (primarySize === 'small') formattedMain = `<small>${formattedMain}</small>`;
 
     let mergedText;
     const transIdxs = matches.get(mi);
     if (transIdxs?.length) {
       const transParts = transIdxs
-        .map(ti => joinSubtitleLines(stripHtmlTags(transTimed[ti]?.text), transLang))
+        .map(ti => cleanText(transTimed[ti]?.text, transLang))
         .filter(Boolean);
 
       if (transParts.length) {
         const cleanTransText = transParts.join(transJoiner);
-        mergedText = `<b>${htmlEncodeSrt(cleanMainText)}</b>\n\u203a <i><font color="${DUAL_SUB_TRANS_COLOR}">${htmlEncodeSrt(cleanTransText)}</font></i>`;
+        const prefix = marker === 'angle' ? '\u203a ' : marker === 'dash' ? '- ' : marker === 'dot' ? '• ' : '';
+        let formattedTrans = `<i><font color="${color}">${prefix}${cleanTransText}</font></i>`;
+        if (secondarySize === 'small') formattedTrans = `<small>${formattedTrans}</small>`;
+        else if (secondarySize === 'x-small') formattedTrans = `<small><small>${formattedTrans}</small></small>`;
+
+        mergedText = `${formattedMain}\n${formattedTrans}`;
       }
     }
 
     if (mergedText === undefined) {
-      mergedText = `<b>${htmlEncodeSrt(cleanMainText)}</b>`;
+      mergedText = formattedMain;
     }
 
     mergedSubs.push({
@@ -434,7 +465,7 @@ function getSubtitle(key) {
   return entry.content;
 }
 
-async function selectAndMergeBestPair(candidatePairs, mainLang, transLang) {
+async function selectAndMergeBestPair(candidatePairs, mainLang, transLang, options = {}) {
   if (!Array.isArray(candidatePairs) || !candidatePairs.length) return null;
 
   const parsedCache = new Map();
@@ -457,7 +488,7 @@ async function selectAndMergeBestPair(candidatePairs, mainLang, transLang) {
     ]);
     if (!mainParsed?.length || !transParsed?.length) continue;
 
-    const merged = mergeSubtitles(mainParsed, transParsed, { mainLang, transLang });
+    const merged = mergeSubtitles(mainParsed, transParsed, { mainLang, transLang, ...options });
     const matchRate = merged?.matchRate || 0;
 
     if (!best || matchRate > best.matchRate) {
@@ -581,7 +612,15 @@ async function subtitlesHandler({ type, id, extra, config }) {
   const targetId = resolved?.imdbId ? `tt${resolved.imdbId}` : (resolved?.kitsuId ? `kitsu:${resolved.kitsuId}:${episode}` : id);
 
   try {
-    const videoParams = { filename: extra?.filename, videoSize: extra?.videoSize, videoHash: extra?.videoHash };
+    const videoParams = {
+      filename: extra?.filename,
+      videoSize: extra?.videoSize,
+      videoHash: extra?.videoHash,
+      marker: config?.marker,
+      primarySize: config?.primarySize,
+      secondarySize: config?.secondarySize,
+      color: config?.color
+    };
     const videoQuery = serializeVideoParams(videoParams);
 
     const allSubtitles = await scrapeAllSources(targetId, effectiveType, season, episode, videoParams);
@@ -687,6 +726,15 @@ async function generateDynamicSubtitle(
       const mainSub = allSubtitles.find(s => String(s.id) === String(decodedMainId));
       const transSub = isTranslateRequest ? null : allSubtitles.find(s => String(s.id) === String(decodedTransId));
 
+      const mergeOptions = {
+        mainLang,
+        transLang,
+        marker: videoParams?.marker || 'none',
+        primarySize: videoParams?.primarySize || 'normal',
+        secondarySize: videoParams?.secondarySize || 'small',
+        color: videoParams?.color || DUAL_SUB_TRANS_COLOR
+      };
+
       if (mainSub && transSub) {
         const [mainParsed, transParsed] = await Promise.all([
           fetchSubtitleContent(mainSub.url, mainLang).then(c => c ? parseSrt(c) : null),
@@ -694,7 +742,7 @@ async function generateDynamicSubtitle(
         ]);
 
         if (mainParsed?.length && transParsed?.length) {
-          const merged = mergeSubtitles(mainParsed, transParsed, { mainLang, transLang });
+          const merged = mergeSubtitles(mainParsed, transParsed, mergeOptions);
           if (merged?.length) {
             const srtContent = formatSrt(merged);
             if (srtContent) {
@@ -712,7 +760,7 @@ async function generateDynamicSubtitle(
         if (mainParsed?.length) {
           const translatedCues = await translateSubtitleCues(mainParsed, mainLang, transLang);
           if (translatedCues?.length) {
-            const merged = mergeSubtitles(mainParsed, translatedCues, { mainLang, transLang });
+            const merged = mergeSubtitles(mainParsed, translatedCues, mergeOptions);
             if (merged?.length) {
               const srtContent = formatSrt(merged);
               if (srtContent) {
@@ -721,7 +769,7 @@ async function generateDynamicSubtitle(
               }
             }
           }
-          const primaryOnly = mergeSubtitles(mainParsed, [], { mainLang });
+          const primaryOnly = mergeSubtitles(mainParsed, [], mergeOptions);
           const primarySrt = formatSrt(primaryOnly);
           if (primarySrt) {
             storeSubtitle(cacheKey, primarySrt);
@@ -732,7 +780,7 @@ async function generateDynamicSubtitle(
 
       const candidatePairs = generateCandidatePairs(allSubtitles, mainLang, transLang);
       if (candidatePairs.length) {
-        const best = await selectAndMergeBestPair(candidatePairs, mainLang, transLang);
+        const best = await selectAndMergeBestPair(candidatePairs, mainLang, transLang, mergeOptions);
         if (best?.merged?.length && best.mergedSrt) {
           storeSubtitle(cacheKey, best.mergedSrt);
           return best.mergedSrt;
@@ -749,7 +797,7 @@ async function generateDynamicSubtitle(
         if (content) {
           const parsed = parseSrt(content);
           if (parsed?.length) {
-            const merged = mergeSubtitles(parsed, [], { mainLang: subLang });
+            const merged = mergeSubtitles(parsed, [], { ...mergeOptions, mainLang: subLang });
             const fallbackSrt = formatSrt(merged);
             if (fallbackSrt) {
               storeSubtitle(cacheKey, fallbackSrt);
