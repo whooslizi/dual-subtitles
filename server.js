@@ -227,6 +227,7 @@ function parseConfigParam(configStr) {
     return {
       mainLang: params.get('mainLang') || 'English [eng]',
       transLang: params.get('transLang') || 'Vietnamese [vie]',
+      autoTranslate: params.get('autoTranslate') ?? 'true',
       marker: params.get('marker') || 'none',
       primarySize: params.get('primarySize') || 'normal',
       secondarySize: params.get('secondarySize') || 'small',
@@ -236,6 +237,7 @@ function parseConfigParam(configStr) {
     return {
       mainLang: 'English [eng]',
       transLang: 'Vietnamese [vie]',
+      autoTranslate: 'true',
       marker: 'none',
       primarySize: 'normal',
       secondarySize: 'small',

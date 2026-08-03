@@ -145,7 +145,7 @@ function serializeVideoParams(params = {}) {
 const QUALITY_GATE_THRESHOLD = 0.85;
 const MAX_PAIR_ATTEMPTS = 3;
 const ADDON_NAME = process.env.ADDON_NAME || 'Dual Subtitles';
-const ADDON_VERSION = '1.0.0';
+const ADDON_VERSION = '1.1.0';
 
 const manifest = {
   id: 'community.dualsubtitles',

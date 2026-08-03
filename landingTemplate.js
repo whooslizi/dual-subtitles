@@ -164,6 +164,13 @@ function generateLandingHTML(manifest, baseUrl) {
 
         <div class="grid">
           <div class="field">
+            <label for="autoTranslate">AUTO-TRANSLATE OPTION (100% SYNCED AI TRACK)</label>
+            <select id="autoTranslate">
+              <option value="true" selected>Enabled (Always include 100% Synced AI Track)</option>
+              <option value="false">Disabled (Only use scraped subtitles)</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="marker">SECONDARY MARKER PREFIX</label>
             <select id="marker">
               <option value="none" selected>None (No prefix symbol)</option>
@@ -213,6 +220,7 @@ function generateLandingHTML(manifest, baseUrl) {
       : "${baseUrl}";
     const mainSelect = document.getElementById('mainLang');
     const transSelect = document.getElementById('transLang');
+    const autoTranslateSelect = document.getElementById('autoTranslate');
     const markerSelect = document.getElementById('marker');
     const primarySizeSelect = document.getElementById('primarySize');
     const secondarySizeSelect = document.getElementById('secondarySize');
@@ -226,18 +234,19 @@ function generateLandingHTML(manifest, baseUrl) {
     function update() {
       const main = encodeURIComponent(mainSelect.value);
       const trans = encodeURIComponent(transSelect.value);
+      const autoTranslate = encodeURIComponent(autoTranslateSelect.value);
       const marker = encodeURIComponent(markerSelect.value);
       const primarySize = encodeURIComponent(primarySizeSelect.value);
       const secondarySize = encodeURIComponent(secondarySizeSelect.value);
       const color = encodeURIComponent(colorSelect.value);
 
-      const query = 'mainLang=' + main + '&transLang=' + trans + '&marker=' + marker + '&primarySize=' + primarySize + '&secondarySize=' + secondarySize + '&color=' + color;
+      const query = 'mainLang=' + main + '&transLang=' + trans + '&autoTranslate=' + autoTranslate + '&marker=' + marker + '&primarySize=' + primarySize + '&secondarySize=' + secondarySize + '&color=' + color;
       const http = baseUrl + '/' + query + '/manifest.json';
       installBtn.href = http.replace(/^https?:\\/\\//, 'stremio://');
       copyBtn.dataset.url = http;
     }
 
-    [mainSelect, transSelect, markerSelect, primarySizeSelect, secondarySizeSelect, colorSelect].forEach(el => el.addEventListener('change', update));
+    [mainSelect, transSelect, autoTranslateSelect, markerSelect, primarySizeSelect, secondarySizeSelect, colorSelect].forEach(el => el.addEventListener('change', update));
     update();
 
     copyBtn.addEventListener('click', () => {
