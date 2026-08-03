@@ -677,7 +677,7 @@ async function subtitlesHandler({ type, id, extra, config }) {
     const mainList = filterByLanguage(allSubtitles, mainLang);
 
     if (autoTranslate && isTranslationEnabled() && mainList.length > 0) {
-      const trackTitle = `🤖 Dual [Auto-Translated] (${parseLangCode(mainLang).toUpperCase()}+${parseLangCode(transLang).toUpperCase()})`;
+      const trackTitle = `Dual [Auto-Translated] (${parseLangCode(mainLang).toUpperCase()}+${parseLangCode(transLang).toUpperCase()})`;
       const trackSubtitleName = `${trackTitle} - ${getLanguageName(mainLang)} → ${getLanguageName(transLang)}`;
       const dynamicParams = [
         effectiveType, encodeURIComponent(targetId), season || '0', episode || '0',
@@ -693,7 +693,7 @@ async function subtitlesHandler({ type, id, extra, config }) {
       };
 
       if (!finalSubtitles.some(s => s.id === autoTranslatedTrack.id)) {
-        finalSubtitles.push(autoTranslatedTrack);
+        finalSubtitles.unshift(autoTranslatedTrack);
       }
     } else if (finalSubtitles.length === 0) {
       const trackTitle = `Dual (${parseLangCode(mainLang).toUpperCase()}+${parseLangCode(transLang).toUpperCase()})`;
@@ -712,7 +712,7 @@ async function subtitlesHandler({ type, id, extra, config }) {
       }];
     }
 
-    return { subtitles: finalSubtitles, cacheMaxAge: 3600 };
+    return { subtitles: finalSubtitles, cacheMaxAge: 0 };
   } catch (error) {
     debugServer.error('Error in subtitle handler:', sanitizeForLogging(error.message));
     return { subtitles: [] };
