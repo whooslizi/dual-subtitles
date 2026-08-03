@@ -12,7 +12,7 @@ const {
 } = require('./languages');
 const { alignAndMatch } = require('./lib/syncEngine');
 const { generateCandidatePairs, filterByLanguage } = require('./lib/sourceSelection');
-const { scrapeAllSources, generateSelectableDualPairs } = require('./scrapers');
+const { scrapeAllSources, generateSelectableDualPairs } = require('./scrapers/index');
 const { singleflight } = require('./lib/singleflight');
 const { translateSubtitleCues, isTranslationEnabled } = require('./lib/translator');
 
@@ -671,42 +671,45 @@ async function subtitlesHandler({ type, id, extra, config }) {
           SubtitlesName: pair.subtitleName
         };
       });
-    } else {
-      const autoTranslate = config?.autoTranslate !== 'false';
-      const mainList = filterByLanguage(allSubtitles, mainLang);
-      const transList = filterByLanguage(allSubtitles, transLang);
+    }
 
-      if (autoTranslate && isTranslationEnabled() && mainList.length > 0 && transList.length === 0) {
-        const trackTitle = `🤖 Dual [Auto-Translated] (${parseLangCode(mainLang).toUpperCase()}+${parseLangCode(transLang).toUpperCase()})`;
-        const trackSubtitleName = `${trackTitle} - ${getLanguageName(mainLang)} → ${getLanguageName(transLang)}`;
-        const dynamicParams = [
-          effectiveType, encodeURIComponent(targetId), season || '0', episode || '0',
-          mainLang, transLang, encodeURIComponent(mainList[0].id), 'translate'
-        ].join('/');
+    const autoTranslate = config?.autoTranslate !== 'false';
+    const mainList = filterByLanguage(allSubtitles, mainLang);
 
-        finalSubtitles = [{
-          id: `dual-translate-${parseLangCode(mainLang)}-${parseLangCode(transLang)}`,
-          url: `{{ADDON_URL}}/subs/${dynamicParams}.vtt${videoQuery ? `?${videoQuery}` : ''}`,
-          lang: parseLangCode(mainLang),
-          name: trackTitle,
-          SubtitlesName: trackSubtitleName
-        }];
-      } else {
-        const trackTitle = `Dual (${parseLangCode(mainLang).toUpperCase()}+${parseLangCode(transLang).toUpperCase()})`;
-        const trackSubtitleName = `${trackTitle} - ${getLanguageName(mainLang)} + ${getLanguageName(transLang)}`;
-        const dynamicParams = [
-          effectiveType, encodeURIComponent(targetId), season || '0', episode || '0',
-          mainLang, transLang, 'auto', 'auto'
-        ].join('/');
+    if (autoTranslate && isTranslationEnabled() && mainList.length > 0) {
+      const trackTitle = `🤖 Dual [Auto-Translated] (${parseLangCode(mainLang).toUpperCase()}+${parseLangCode(transLang).toUpperCase()})`;
+      const trackSubtitleName = `${trackTitle} - ${getLanguageName(mainLang)} → ${getLanguageName(transLang)}`;
+      const dynamicParams = [
+        effectiveType, encodeURIComponent(targetId), season || '0', episode || '0',
+        mainLang, transLang, encodeURIComponent(mainList[0].id), 'translate'
+      ].join('/');
 
-        finalSubtitles = [{
-          id: `dual-${parseLangCode(mainLang)}-${parseLangCode(transLang)}`,
-          url: `{{ADDON_URL}}/subs/${dynamicParams}.vtt${videoQuery ? `?${videoQuery}` : ''}`,
-          lang: parseLangCode(mainLang),
-          name: trackTitle,
-          SubtitlesName: trackSubtitleName
-        }];
+      const autoTranslatedTrack = {
+        id: `dual-translate-${parseLangCode(mainLang)}-${parseLangCode(transLang)}`,
+        url: `{{ADDON_URL}}/subs/${dynamicParams}.vtt${videoQuery ? `?${videoQuery}` : ''}`,
+        lang: parseLangCode(mainLang),
+        name: trackTitle,
+        SubtitlesName: trackSubtitleName
+      };
+
+      if (!finalSubtitles.some(s => s.id === autoTranslatedTrack.id)) {
+        finalSubtitles.push(autoTranslatedTrack);
       }
+    } else if (finalSubtitles.length === 0) {
+      const trackTitle = `Dual (${parseLangCode(mainLang).toUpperCase()}+${parseLangCode(transLang).toUpperCase()})`;
+      const trackSubtitleName = `${trackTitle} - ${getLanguageName(mainLang)} + ${getLanguageName(transLang)}`;
+      const dynamicParams = [
+        effectiveType, encodeURIComponent(targetId), season || '0', episode || '0',
+        mainLang, transLang, 'auto', 'auto'
+      ].join('/');
+
+      finalSubtitles = [{
+        id: `dual-${parseLangCode(mainLang)}-${parseLangCode(transLang)}`,
+        url: `{{ADDON_URL}}/subs/${dynamicParams}.vtt${videoQuery ? `?${videoQuery}` : ''}`,
+        lang: parseLangCode(mainLang),
+        name: trackTitle,
+        SubtitlesName: trackSubtitleName
+      }];
     }
 
     return { subtitles: finalSubtitles, cacheMaxAge: 3600 };
@@ -825,8 +828,12 @@ async function generateDynamicSubtitle(
         if (content) {
           const parsed = parseSrt(content);
           if (parsed?.length) {
-            const merged = mergeSubtitles(parsed, [], { ...mergeOptions, mainLang: subLang });
-            const fallbackSrt = formatSrt(merged);
+            let autoTrans = null;
+            if (isTranslationEnabled()) {
+              autoTrans = await translateSubtitleCues(parsed, mainLang, transLang);
+            }
+            const merged = mergeSubtitles(parsed, autoTrans || [], { ...mergeOptions, mainLang: subLang, transLang });
+            const fallbackSrt = formatSrtSimple(merged, mainLang, transLang);
             if (fallbackSrt) {
               storeSubtitle(cacheKey, fallbackSrt);
               return fallbackSrt;

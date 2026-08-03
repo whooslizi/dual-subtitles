@@ -882,7 +882,7 @@ test('resolveMediaId: resolves MAL ID to IMDb ID via ARM API', async () => {
 // ============================================================================
 console.log('\n--- Multi-Source Scrapers ---');
 
-const { generateSelectableDualPairs } = require('./scrapers');
+const { generateSelectableDualPairs } = require('./scrapers/index');
 
 test('scrapers: generateSelectableDualPairs creates distinct user-selectable options', () => {
   const dummySubs = [
@@ -893,6 +893,19 @@ test('scrapers: generateSelectableDualPairs creates distinct user-selectable opt
   const pairs = generateSelectableDualPairs(dummySubs, 'eng', 'vie');
   assert.ok(pairs.length >= 2, `expected at least 2 selectable pairs, got ${pairs.length}`);
   assert.ok(pairs[0].title.includes('OpenSubtitles v3'));
+});
+
+const { subtitlesHandler } = require('./addon');
+
+test('subtitlesHandler: includes Auto-Translated option when primary subs exist', async () => {
+  const res = await subtitlesHandler({
+    type: 'movie',
+    id: 'tt0111161',
+    config: { mainLang: 'English [eng]', transLang: 'Vietnamese [vie]', autoTranslate: 'true' }
+  });
+  assert.ok(res?.subtitles?.length > 0, 'Should return subtitles list');
+  const hasAutoTranslateTrack = res.subtitles.some(s => s.id?.includes('dual-translate'));
+  assert.ok(hasAutoTranslateTrack, 'Subtitles list should include 🤖 Dual [Auto-Translated] option');
 });
 
 runAllTests();
